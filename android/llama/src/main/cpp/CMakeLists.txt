@@ -102,3 +102,16 @@ target_link_libraries(audio-android
         log
 )
 
+##### deepseek  #####
+add_library(deepseek-android SHARED
+        common.cpp
+        deepseek-android.cpp
+)
+target_link_libraries(deepseek-android
+        nlohmann_json
+        llama
+        common
+        android
+        log
+)
+

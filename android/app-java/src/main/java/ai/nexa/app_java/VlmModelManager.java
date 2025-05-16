@@ -11,17 +11,12 @@ public class VlmModelManager {
     private static final String TAG = "LlamaBridge";
     private static final String MODELS_DIR = "models";
 
-    // For nanollava
-//    private static final String MODEL_TEXT_FILENAME = "nanollava-model-q8_0.gguf";
-//    private static final String MODEL_MMPROJ_FILENAME = "nanollava-projector-fp16.gguf";
-
-    // For  Omnivision
-    private static final String MODEL_TEXT_FILENAME = "model-q8_0.gguf";
-    private static final String MODEL_MMPROJ_FILENAME = "projector-fp16.gguf";
-
-//    private static final String MODEL_TEXT_FILENAME = "nano-vlm-instruct-llm-F16.gguf";
-//    private static final String MODEL_MMPROJ_FILENAME = "nano-vlm-instruct-mmproj-F16.gguf";
-
+    // For DeepSeek R1
+    private static final String MODEL_TEXT_FILENAME = "deepseek-r1-distill-qwen-1.5b-nexaquant-q8_0.gguf";
+    
+    // For Omnivision (commented out)
+    // private static final String MODEL_TEXT_FILENAME = "model-q8_0.gguf";
+    // private static final String MODEL_MMPROJ_FILENAME = "projector-fp16.gguf";
 
     private final Context context;
     private File textModelFile;
@@ -89,29 +84,19 @@ public class VlmModelManager {
      * @throws IOException if model cannot be found or accessed
      */
     public String getMmProjModelPath() throws IOException {
-        // If we already have a valid model file, return it
-        if (mmProjModelFile != null && mmProjModelFile.exists() && mmProjModelFile.canRead()) {
-            return mmProjModelFile.getAbsolutePath();
-        }
-
-        // Search for existing model
-        String path = findExistingModel(MODEL_MMPROJ_FILENAME);
-        if (path != null) {
-            mmProjModelFile = new File(path);
-            return path;
-        }
-
-        throw new IOException("MMProj model not found in any storage location");
+        // For DeepSeek model, we don't need a projector file
+        // This method is kept for compatibility with existing code
+        return "";
     }
 
     /**
-     * Check if both required models exist in any location
-     * @return true if both models are found
+     * Check if required models exist in any location
+     * @return true if models are found
      */
     public boolean areModelsAvailable() {
         try {
             getTextModelPath();
-            getMmProjModelPath();
+            // For DeepSeek model, we only need the text model
             return true;
         } catch (IOException e) {
             Log.w(TAG, "Models not available: " + e.getMessage());

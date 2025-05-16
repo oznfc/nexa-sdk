@@ -41,7 +41,6 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton selectImageButton;
     private ImageButton sendMsgIB;
     private EditText userMsgEdt;
-    private String justSelectedImageUri;
 
     private LinearLayout linearLayout;
     private TextView titleAfterChatTextView;
@@ -97,11 +96,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
-        selectImageButton.setOnClickListener(v -> {
-            Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            startActivityForResult(intent, PICK_IMAGE_REQUEST);
-        });
-
+        // For DeepSeek model, we'll hide the image upload button since it's a text-only model
+        selectImageButton.setVisibility(View.GONE);
+        
         sendMsgIB.setOnClickListener(v -> {
             hideKeyboard(v);
             sendTextMessage();
@@ -122,13 +119,9 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "Sending message: " + userMessage);
             messageHandler.addMessage(new MessageModal(userMessage, "user", null));
 
-            if (justSelectedImageUri == null) {
-                messageHandler.addMessage(new MessageModal("Please select an image first.", "bot", null));
-                return;
-            }
-
-            // Use LlamaBridge for inference
-            llamaBridge.processMessage(userMessage, justSelectedImageUri, new LlamaBridge.InferenceCallback() {
+            // For DeepSeek model, we don't need an image
+            // Use LlamaBridge for inference (passing null as imageUri)
+            llamaBridge.processMessage(userMessage, null, new LlamaBridge.InferenceCallback() {
                 @Override
                 public void onStart() {
                     // Optional: Show loading indicator
@@ -160,7 +153,6 @@ public class MainActivity extends AppCompatActivity {
             });
 
             userMsgEdt.setText(""); // Clear the input field after sending
-            justSelectedImageUri = null; // Clear the image URI after sending
         } else {
             Toast.makeText(MainActivity.this, "Please enter your message.", Toast.LENGTH_SHORT).show();
         }
@@ -169,7 +161,9 @@ public class MainActivity extends AppCompatActivity {
     private void sendImageAsMessage(String imageUri) {
         updateChatBotDisplay();
         messageHandler.addMessage(new MessageModal("", "user", imageUri));
-        justSelectedImageUri = imageUri;
+        // For DeepSeek model, we don't need to store the image URI
+        // But we'll display a message to the user
+        messageHandler.addMessage(new MessageModal("DeepSeek model doesn't process images. Please type your question.", "bot", null));
     }
 
     @Override

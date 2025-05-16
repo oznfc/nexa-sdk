@@ -1,8 +1,7 @@
 package ai.nexa.app_java;
 
 import android.content.Context;
-import com.nexa.NexaOmniVlmInference;
-import com.nexa.NexaVlmInference;
+import com.nexa.NexaDeepSeekInference;
 import android.util.Log;
 
 import java.io.IOException;
@@ -30,7 +29,7 @@ public class LlamaBridge {
     private final MessageHandler messageHandler;
     private final VlmModelManager modelManager;
     private final ImagePathHelper imagePathHelper;
-    private NexaOmniVlmInference nexaVlmInference;
+    private NexaDeepSeekInference nexaDeepSeekInference;
     private boolean isModelLoaded = false;
 
     private final KotlinFlowHelper flowHelper = new KotlinFlowHelper();
@@ -71,26 +70,22 @@ public class LlamaBridge {
                 }
 
                 String modelPath = modelManager.getTextModelPath();
-                String projectorPath = modelManager.getMmProjModelPath();
 
-                Log.d(TAG, "Loading model from: " + modelPath);
-                Log.d(TAG, "Loading projector from: " + projectorPath);
+                Log.d(TAG, "Loading DeepSeek model from: " + modelPath);
 
                 // Create with default values for optional parameters
-                nexaVlmInference = new NexaOmniVlmInference(
+                nexaDeepSeekInference = new NexaDeepSeekInference(
                         modelPath, // modelPath
-                        projectorPath, // projectorPath
-                        "", // imagePath (empty string as default)
-                        new ArrayList<>(Arrays.asList("</s>")), // stopWords (empty list)
+                        new ArrayList<>(Arrays.asList("</s>")), // stopWords
                         DEFAULT_TEMPERATURE, // temperature
                         DEFAULT_MAX_TOKENS, // maxNewTokens
                         DEFAULT_TOP_K, // topK
                         DEFAULT_TOP_P // topP
                 );
-                nexaVlmInference.loadModel();
+                nexaDeepSeekInference.loadModel();
                 isModelLoaded = true;
 
-                Log.d(TAG, "Model loaded successfully.");
+                Log.d(TAG, "DeepSeek model loaded successfully.");
                 // messageHandler.addMessage(new MessageModal("Model loaded successfully",
                 // "assistant", null));
             } catch (Exception e) {
@@ -164,15 +159,8 @@ public class LlamaBridge {
             return;
         }
 
-        String imageAbsolutePath = null;
-        try {
-            imageAbsolutePath = imagePathHelper.copyUriToPrivateFile(context, imageUri);
-        } catch (IOException e) {
-            callback.onError("Failed to process image: " + e.getMessage());
-            return;
-        }
-
-        final String imagePath = imageAbsolutePath;
+        // For DeepSeek model, we don't need to process the image
+        // We'll just use the text message directly
         MessageModal assistantMessage = new MessageModal("", "bot", null);
         messageHandler.addMessage(assistantMessage);
 
@@ -181,9 +169,8 @@ public class LlamaBridge {
             final long[] firstTokenTime = { 0 };
             final int[] tokenCount = { 0 };
 
-            Flow<String> flow = nexaVlmInference.createCompletionStream(
+            Flow<String> flow = nexaDeepSeekInference.createCompletionStream(
                     message,
-                    imagePath,
                     new ArrayList<>(Arrays.asList("</s>")),
                     DEFAULT_TEMPERATURE,
                     DEFAULT_MAX_TOKENS,
@@ -292,14 +279,14 @@ public class LlamaBridge {
     // }
 
     public void shutdown() {
-        if (nexaVlmInference != null) {
+        if (nexaDeepSeekInference != null) {
             executor.execute(() -> {
                 try {
-                    nexaVlmInference.dispose();
+                    nexaDeepSeekInference.dispose();
                 } catch (Exception e) {
                     Log.e(TAG, "Error closing inference", e);
                 }
-                nexaVlmInference = null;
+                nexaDeepSeekInference = null;
                 isModelLoaded = false;
             });
         }
