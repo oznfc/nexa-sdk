@@ -21,7 +21,7 @@ extern std::string jstring2str(JNIEnv* env, jstring jstr);
 // Global variables
 struct llama_context * ctx_llama = nullptr;
 struct llama_model * model = nullptr;
-llama_sampling_params sparams;
+struct llama_sampling_params sparams;
 
 // Initialize the model
 void deepseek_init(const char* model_path, const char* type) {
@@ -40,7 +40,7 @@ void deepseek_init(const char* model_path, const char* type) {
     ctx_params.n_batch = 512;
     
     // Load the model
-    model = llama_load_model_from_file(model_path, model_params);
+    model = llama_model_load_from_file(model_path, model_params);
     if (model == nullptr) {
         LOGe("Failed to load model: %s", model_path);
         return;
@@ -50,7 +50,7 @@ void deepseek_init(const char* model_path, const char* type) {
     ctx_llama = llama_new_context_with_model(model, ctx_params);
     if (ctx_llama == nullptr) {
         LOGe("Failed to create context");
-        llama_free_model(model);
+        llama_model_free(model);
         model = nullptr;
         return;
     }
@@ -60,7 +60,6 @@ void deepseek_init(const char* model_path, const char* type) {
     sparams.temp = 0.8f;
     sparams.top_k = 40;
     sparams.top_p = 0.95f;
-    sparams.n_prev = 64;
     sparams.repeat_penalty = 1.1f;
     
     LOGi("DeepSeek model initialized successfully");
@@ -74,7 +73,7 @@ void deepseek_free() {
     }
     
     if (model != nullptr) {
-        llama_free_model(model);
+        llama_model_free(model);
         model = nullptr;
     }
     
@@ -86,14 +85,14 @@ void eval_string(struct llama_context * ctx, const char * str, int n_batch, int 
     std::vector<llama_token> embd_inp;
     
     if (add_bos) {
-        embd_inp.push_back(llama_token_bos(model));
+        embd_inp.push_back(llama_token_bos(llama_model_get_vocab(model)));
     }
     
     // Tokenize the input string
     const int n_ctx = llama_n_ctx(ctx);
-    auto n_tokens = llama_tokenize(model, str, str + strlen(str), nullptr, 0, true);
-    std::vector<llama_token> tokens(n_tokens);
-    llama_tokenize(model, str, str + strlen(str), tokens.data(), tokens.size(), true);
+    std::vector<llama_token> tokens(n_ctx);
+    int n_tokens = llama_tokenize(llama_model_get_vocab(model), str, strlen(str), tokens.data(), tokens.size(), true, false);
+    tokens.resize(n_tokens);
     
     embd_inp.insert(embd_inp.end(), tokens.begin(), tokens.end());
     
@@ -103,23 +102,38 @@ void eval_string(struct llama_context * ctx, const char * str, int n_batch, int 
     }
     
     // Process the tokens in batches
+    llama_batch batch = llama_batch_init(n_batch, 0, 1);
+    
     for (size_t i = 0; i < embd_inp.size(); i += n_batch) {
         size_t n_eval = std::min(n_batch, (int)(embd_inp.size() - i));
-        if (llama_eval(ctx, embd_inp.data() + i, n_eval, *n_past, 1) != 0) {
-            LOGe("Failed to eval");
+        
+        batch.n_tokens = n_eval;
+        for (size_t j = 0; j < n_eval; j++) {
+            batch.token[j] = embd_inp[i + j];
+            batch.pos[j] = *n_past + j;
+            batch.seq_id[j][0] = 0;
+            batch.n_seq_id[j] = 1;
+        }
+        
+        if (llama_decode(ctx, batch) != 0) {
+            LOGe("Failed to decode");
+            llama_batch_free(batch);
             return;
         }
+        
         *n_past += n_eval;
     }
+    
+    llama_batch_free(batch);
 }
 
 // Sampler structure
 struct common_sampler {
-    llama_sampling_context * ctx_sampling;
+    struct llama_sampling_context * ctx_sampling;
 };
 
 // Initialize sampler
-struct common_sampler * common_sampler_init(struct llama_model * model, llama_sampling_params params) {
+struct common_sampler * common_sampler_init(struct llama_model * model, struct llama_sampling_params params) {
     struct common_sampler * sampler = new common_sampler();
     sampler->ctx_sampling = llama_sampling_init(params);
     return sampler;
@@ -139,31 +153,42 @@ void common_sampler_free(struct common_sampler * sampler) {
 const char * sample(struct common_sampler * sampler, struct llama_context * ctx, int * n_past) {
     llama_token id = 0;
     
-    // Get the logits from the last token
-    const float * logits = llama_get_logits(ctx);
-    
     // Sample a token
-    id = llama_sampling_sample(sampler->ctx_sampling, ctx, nullptr);
+    id = llama_sampling_sample(sampler->ctx_sampling, ctx, NULL);
     
     // If end of stream, return empty string
-    if (id == llama_token_eos(model)) {
+    if (id == llama_token_eos(llama_model_get_vocab(model))) {
         return "";
     }
     
     // Evaluate the token
-    llama_token tokens_to_eval[1] = { id };
-    if (llama_eval(ctx, tokens_to_eval, 1, *n_past, 1) != 0) {
-        LOGe("Failed to eval");
+    llama_batch batch = llama_batch_init(1, 0, 1);
+    batch.token[0] = id;
+    batch.pos[0] = *n_past;
+    batch.n_tokens = 1;
+    batch.seq_id[0][0] = 0;
+    batch.n_seq_id[0] = 1;
+    
+    if (llama_decode(ctx, batch) != 0) {
+        LOGe("Failed to decode");
+        llama_batch_free(batch);
         return "";
     }
+    
+    llama_batch_free(batch);
     (*n_past)++;
     
     // Convert token to string
     static std::string result;
     result.resize(32);
     
-    const int n_tokens = llama_token_to_piece(model, id, &result[0], result.size());
-    result.resize(n_tokens);
+    const int n_token_chars = llama_token_to_piece(llama_model_get_vocab(model), id, result.data(), result.size(), false, false);
+    if (n_token_chars < 0) {
+        result.resize(-n_token_chars);
+        llama_token_to_piece(llama_model_get_vocab(model), id, result.data(), result.size(), false, false);
+    } else {
+        result.resize(n_token_chars);
+    }
     
     return result.c_str();
 }

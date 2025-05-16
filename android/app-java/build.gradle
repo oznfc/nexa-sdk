@@ -47,6 +47,7 @@ dependencies {
     implementation 'com.github.bumptech.glide:glide:4.16.0'
     annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
 
-   implementation project(":llama")
-    // implementation files("libs/com.nexa.aar")
+   // Temporarily comment out the llama module to build without native libraries
+   // implementation project(":llama")
+   // implementation files("libs/com.nexa.aar")
 }
