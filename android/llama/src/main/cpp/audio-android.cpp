@@ -92,8 +92,9 @@ Java_com_nexa_NexaAudioInference_init_1npast(JNIEnv *env, jobject /* this */) {
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_nexa_NexaAudioInference_init_1params(JNIEnv *env, jobject /* this */, jlong jctx_params) {
+Java_com_nexa_NexaAudioInference_init_1params(JNIEnv *env, jobject /* this */, jlong jctx_params, jlong jctx_omni) {
     auto* ctx_params = reinterpret_cast<omni_context_params *>(jctx_params);
+    auto* ctx_omni = reinterpret_cast<omni_context *>(jctx_omni);
 
     if (ctx_params == nullptr) {
         std::cerr << "Error: jctx_params is null!" << std::endl;
@@ -110,13 +111,10 @@ Java_com_nexa_NexaAudioInference_init_1params(JNIEnv *env, jobject /* this */, j
     }
 
     // Step 3: Allocate memory for omni_params and ensure it's successful.
-    omni_params* all_params = nullptr;
-    try {
-        all_params = new omni_params(extracted_params);
-    } catch (const std::bad_alloc& e) {
-        std::cerr << "Error: Failed to allocate memory for omni_params: " << e.what() << std::endl;
-        return 0;  // Return 0 (null) if memory allocation fails.
-    }
+    omni_params* all_params = new omni_params(extracted_params);
+    
+    // Burada ctx_omni kullanılıyor, bu yüzden parametre olarak geçirilmeli
+    struct common_sampler * ctx_sampling = common_sampler_init(ctx_omni->model, all_params->gpt.sampling);
 
     std::cout << " fname_inp size: " << all_params->whisper.fname_inp.size() << std::endl;
 
@@ -146,7 +144,7 @@ Java_com_nexa_NexaAudioInference_init_1sampler(JNIEnv *env, jobject /* this */, 
     omni_eval_audio_embed(ctx_omni->ctx_llama, audio_embed, all_params->gpt.n_batch, n_past);
     eval_string(ctx_omni->ctx_llama, user_prompt.c_str(), all_params->gpt.n_batch, n_past, false);
 
-    struct common_sampler * ctx_sampling = common_sampler_init(ctx_omni->model, all_params->gpt.sparams);
+    struct common_sampler * ctx_sampling = common_sampler_init(ctx_omni->model, all_params->gpt.sampling);
 
     return reinterpret_cast<jlong>(ctx_sampling);
 }
