@@ -66,16 +66,21 @@ public class ImagePathHelper {
     }
 
     public String copyUriToPrivateFile(Context context, String uriString) throws IOException {
-        // 将字符串转换回 Uri
+        // Special case for DeepSeek model which doesn't need an image
+        if ("no_image".equals(uriString)) {
+            return "no_image";
+        }
+        
+        // Convert string back to Uri
         Uri uri = Uri.parse(uriString);
 
-        // 应用私有目录
+        // Application private directory
         File privateDir = context.getExternalFilesDir("images");
         if (privateDir == null) {
             throw new IOException("Private directory not available");
         }
 
-        // 创建目标文件
+        // Create destination file
         File destFile = new File(privateDir, "temp_image_" + System.currentTimeMillis() + ".jpg");
 
         try (InputStream inputStream = context.getContentResolver().openInputStream(uri);
@@ -85,7 +90,7 @@ public class ImagePathHelper {
                 throw new IOException("Failed to open URI input stream");
             }
 
-            // 读取并写入数据
+            // Read and write data
             byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = inputStream.read(buffer)) != -1) {
@@ -93,7 +98,7 @@ public class ImagePathHelper {
             }
         }
 
-        // 返回文件路径
+        // Return file path
         return destFile.getAbsolutePath();
     }
 

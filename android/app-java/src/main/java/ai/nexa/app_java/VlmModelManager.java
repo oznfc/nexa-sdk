@@ -15,10 +15,15 @@ public class VlmModelManager {
 //    private static final String MODEL_TEXT_FILENAME = "nanollava-model-q8_0.gguf";
 //    private static final String MODEL_MMPROJ_FILENAME = "nanollava-projector-fp16.gguf";
 
-    // For  Omnivision
-    private static final String MODEL_TEXT_FILENAME = "model-q8_0.gguf";
-    private static final String MODEL_MMPROJ_FILENAME = "projector-fp16.gguf";
+    // For DeepSeek R1
+    private static final String MODEL_TEXT_FILENAME = "deepseek-r1-distill-qwen-1.5b-nexaquant.gguf";
+    private static final String MODEL_MMPROJ_FILENAME = ""; // No projector needed for DeepSeek
 
+//    // For  Omnivision
+//    private static final String MODEL_TEXT_FILENAME = "model-q8_0.gguf";
+//    private static final String MODEL_MMPROJ_FILENAME = "projector-fp16.gguf";
+//
+//    // For Nano VLM
 //    private static final String MODEL_TEXT_FILENAME = "nano-vlm-instruct-llm-F16.gguf";
 //    private static final String MODEL_MMPROJ_FILENAME = "nano-vlm-instruct-mmproj-F16.gguf";
 
@@ -89,6 +94,11 @@ public class VlmModelManager {
      * @throws IOException if model cannot be found or accessed
      */
     public String getMmProjModelPath() throws IOException {
+        // For DeepSeek model, no projector is needed
+        if (MODEL_MMPROJ_FILENAME.isEmpty()) {
+            return "";
+        }
+        
         // If we already have a valid model file, return it
         if (mmProjModelFile != null && mmProjModelFile.exists() && mmProjModelFile.canRead()) {
             return mmProjModelFile.getAbsolutePath();
@@ -111,7 +121,10 @@ public class VlmModelManager {
     public boolean areModelsAvailable() {
         try {
             getTextModelPath();
-            getMmProjModelPath();
+            // For DeepSeek, we only need the text model
+            if (!MODEL_MMPROJ_FILENAME.isEmpty()) {
+                getMmProjModelPath();
+            }
             return true;
         } catch (IOException e) {
             Log.w(TAG, "Models not available: " + e.getMessage());

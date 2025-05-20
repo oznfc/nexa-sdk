@@ -19,7 +19,7 @@
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/octopus"
-        android:label="VlmSDK"
+        android:label="DeepSeek R1 Test"
         android:roundIcon="@mipmap/octopus_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LayoutTest"

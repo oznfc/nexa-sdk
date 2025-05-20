@@ -16,7 +16,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="100dp"
-            android:text="Hello, Ask Me Anything!"
+            android:text="DeepSeek R1 Test App"
             android:textColor="@color/white"
             android:fontFamily="sans-serif"
             android:gravity="center"
@@ -44,7 +44,7 @@
         android:fontFamily="sans-serif"
         android:gravity="center"
         android:includeFontPadding="false"
-        android:text="Nexa VLM"
+        android:text="DeepSeek R1"
         android:textSize="40sp"
         android:visibility="gone"/>
 
@@ -98,7 +98,7 @@
             android:layout_weight="1"
             android:background="@drawable/input_text_box"
             android:textColor="@color/white"
-            android:hint="Chat with image"
+            android:hint="Chat with DeepSeek"
             android:textColorHint="#8F8F90"
             android:layout_marginTop="15dp"
             android:paddingStart="20dp"/>

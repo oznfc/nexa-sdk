@@ -97,6 +97,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupClickListeners() {
+        // Hide the image selection button since DeepSeek doesn't need images
+        selectImageButton.setVisibility(View.GONE);
+        
+        // Keep the click listener for backward compatibility
         selectImageButton.setOnClickListener(v -> {
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             startActivityForResult(intent, PICK_IMAGE_REQUEST);
@@ -122,10 +126,9 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "Sending message: " + userMessage);
             messageHandler.addMessage(new MessageModal(userMessage, "user", null));
 
-            if (justSelectedImageUri == null) {
-                messageHandler.addMessage(new MessageModal("Please select an image first.", "bot", null));
-                return;
-            }
+            // DeepSeek doesn't require an image
+            // Using a placeholder for the image URI parameter in the LlamaBridge
+            justSelectedImageUri = "no_image";
 
             // Use LlamaBridge for inference
             llamaBridge.processMessage(userMessage, justSelectedImageUri, new LlamaBridge.InferenceCallback() {
@@ -167,9 +170,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendImageAsMessage(String imageUri) {
+        // For DeepSeek, we don't need to handle images
+        // But we keep this method for compatibility
         updateChatBotDisplay();
-        messageHandler.addMessage(new MessageModal("", "user", imageUri));
-        justSelectedImageUri = imageUri;
+        messageHandler.addMessage(new MessageModal("", "user", null));
+        justSelectedImageUri = "no_image";
     }
 
     @Override
